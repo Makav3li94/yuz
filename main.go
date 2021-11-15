@@ -1,67 +1,94 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
+	"flag"
 	"fmt"
+	"github.com/Makav3li94/yuz/blockchain"
+	"os"
+	"runtime"
+	"strconv"
 )
 
-type BlockChain struct {
-	blocks []*Block
+type CommandLine struct {
+	blockchain *blockchain.BlockChain
 }
 
-type Block struct {
-	Hash     []byte
-	Data     []byte
-	PrevHash []byte
+func (cli *CommandLine) printUsage() {
+	fmt.Println("Usage:")
+	fmt.Println(" add -block BLOCK_DATA - add a block to the chain")
+	fmt.Println(" print - Prints the blocks in the chain")
 }
 
-// CreateHash This function creates hash for current block.
-func (b *Block) CreateHash() {
-	info := bytes.Join([][]byte{b.Data, b.PrevHash}, []byte{})
-	hash := sha256.Sum256(info)
-	b.Hash = hash[:]
+func (cli *CommandLine) validateArgs() {
+	if len(os.Args) < 2 {
+		cli.printUsage()
+		runtime.Goexit()
+	}
 }
 
-// CreateBlock This function creates a new block using data and CreateHash() function
-func CreateBlock(data string, prevHash []byte) *Block {
-	block := &Block{[]byte{}, []byte(data), prevHash}
-	block.CreateHash()
-	return block
+func (cli *CommandLine) addBlock(data string) {
+	cli.blockchain.AddBlockToBlockchain(data)
+	fmt.Println("Added Block!")
 }
 
+func (cli *CommandLine) printChain() {
+	iter := cli.blockchain.Iterator()
 
-// AddBlockToBlockchain adds a block to blockchain with  CreateBlock()
+	for {
+		block := iter.Next()
 
-func (chain *BlockChain) AddBlockToBlockchain(data string) {
-	prevBlock := chain.blocks[len(chain.blocks)-1]
-	new := CreateBlock(data, prevBlock.Hash)
-	chain.blocks = append(chain.blocks, new)
+		fmt.Printf("Prev. hash: %x\n", block.PrevHash)
+		fmt.Printf("Data: %s\n", block.Data)
+		fmt.Printf("Hash: %x\n", block.Hash)
+		pow := blockchain.NewProof(block)
+		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
+		fmt.Println()
+
+		if len(block.PrevHash) == 0 {
+			break
+		}
+	}
 }
 
+func (cli *CommandLine) run() {
+	cli.validateArgs()
 
-// CreateGenesisBlock create genesis block
-// the genesis block is the first block of blockchain and doesn't have PrevHash. so we must create it manually
+	addBlockCmd := flag.NewFlagSet("add", flag.ExitOnError)
+	printChainCmd := flag.NewFlagSet("print", flag.ExitOnError)
+	addBlockData := addBlockCmd.String("block", "", "Block data")
 
-func CreateGenesisBlock() *Block {
-	return CreateBlock("This is Genesis Block", []byte{})
-}
+	switch os.Args[1] {
+	case "add":
+		err := addBlockCmd.Parse(os.Args[2:])
+		blockchain.Handle(err)
 
-// initBlockChain initialize the blockchain creates genesis to fire up !
-func initBlockChain() *BlockChain {
-	return &BlockChain{[]*Block{CreateGenesisBlock()}}
+	case "print":
+		err := printChainCmd.Parse(os.Args[2:])
+		blockchain.Handle(err)
+
+	default:
+		cli.printUsage()
+		runtime.Goexit()
+	}
+
+	if addBlockCmd.Parsed() {
+		if *addBlockData == "" {
+			addBlockCmd.Usage()
+			runtime.Goexit()
+		}
+		cli.addBlock(*addBlockData)
+	}
+
+	if printChainCmd.Parsed() {
+		cli.printChain()
+	}
 }
 
 func main() {
-	chain := initBlockChain()
+	defer os.Exit(0)
+	chain := blockchain.InitBlockChain()
+	defer chain.Database.Close()
 
-	chain.AddBlockToBlockchain("First")
-	chain.AddBlockToBlockchain("Second")
-	chain.AddBlockToBlockchain("Third")
-
-	for _, block := range chain.blocks {
-		fmt.Printf("Prev Hash %x \n", block.PrevHash)
-		fmt.Printf("Data in Block %s \n", block.Data)
-		fmt.Printf("Current Hash %x \n", block.Hash)
-	}
+	cli := CommandLine{chain}
+	cli.run()
 }
