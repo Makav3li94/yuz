@@ -2,20 +2,32 @@ package blockchain
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
 	"log"
 )
 
 type Block struct {
-	Hash     []byte
-	Data     []byte
-	PrevHash []byte
-	Nonce    int
+	Hash        []byte
+	Transactions []*Transaction
+	PrevHash    []byte
+	Nonce       int
+}
+
+func (b *Block) HashTransactions() []byte {
+	var txHashes [][]byte
+	var txHash [32]byte
+
+	for _, tx := range b.Transactions {
+		txHashes = append(txHashes, tx.ID)
+	}
+	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	return txHash[:]
 }
 
 // CreateBlock This function creates a new block using data and CreateHash() function
-func CreateBlock(data string, prevHash []byte) *Block {
-	block := &Block{[]byte{}, []byte(data), prevHash, 0}
+func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
+	block := &Block{[]byte{}, txs, prevHash, 0}
 	pow := NewProof(block)
 	nonce, hash := pow.Run()
 
@@ -28,11 +40,11 @@ func CreateBlock(data string, prevHash []byte) *Block {
 // CreateGenesisBlock create genesis block
 // the genesis block is the first block of blockchain and doesn't have PrevHash. so we must create it manually
 
-func CreateGenesisBlock() *Block {
-	return CreateBlock("This is Genesis Block", []byte{})
+func CreateGenesisBlock(coinbase *Transaction) *Block {
+	return CreateBlock([]*Transaction{coinbase}, []byte{})
 }
 
-func (b *Block) Serialize() []byte  {
+func (b *Block) Serialize() []byte {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
 
@@ -42,7 +54,7 @@ func (b *Block) Serialize() []byte  {
 	return res.Bytes()
 }
 
-func Deserialize(data []byte) *Block  {
+func Deserialize(data []byte) *Block {
 	var b Block
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	err := decoder.Decode(&b)
