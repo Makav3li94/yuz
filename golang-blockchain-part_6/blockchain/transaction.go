@@ -9,10 +9,11 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
-	"github.com/Makav3li94/yuz/wallet"
 	"log"
 	"math/big"
 	"strings"
+
+	"github.com/tensor-programming/golang-blockchain/wallet"
 )
 
 type Transaction struct {
@@ -21,7 +22,6 @@ type Transaction struct {
 	Outputs []TxOutput
 }
 
-
 func (tx *Transaction) Hash() []byte {
 	var hash [32]byte
 
@@ -29,6 +29,7 @@ func (tx *Transaction) Hash() []byte {
 	txCopy.ID = []byte{}
 
 	hash = sha256.Sum256(txCopy.Serialize())
+
 	return hash[:]
 }
 
@@ -37,7 +38,6 @@ func (tx Transaction) Serialize() []byte {
 
 	enc := gob.NewEncoder(&encoded)
 	err := enc.Encode(tx)
-
 	if err != nil {
 		log.Panic(err)
 	}
@@ -45,11 +45,10 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
-
-func (tx *Transaction) SetId() {
+func (tx *Transaction) SetID() {
 	var encoded bytes.Buffer
 	var hash [32]byte
-	//gob is an encoder like json. but faster and only available in go
+
 	encode := gob.NewEncoder(&encoded)
 	err := encode.Encode(tx)
 	Handle(err)
@@ -58,23 +57,19 @@ func (tx *Transaction) SetId() {
 	tx.ID = hash[:]
 }
 
-//CoinbaseTx is the first transaction in every block. it's the reward for the miner
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
 		data = fmt.Sprintf("Coins to %s", to)
 	}
 
-	txin := TxInput{[]byte{}, -1,nil, []byte(data)}
-	txout := NewTXOutPut(100,to)
+	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
+	txout := NewTXOutput(100, to)
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.SetId()
+	tx.SetID()
 
 	return &tx
 }
-
-//NewTransaction Adds transaction to block
-// if coins is less than balance, add transaction to input for mining later
 
 func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction {
 	var inputs []TxInput
@@ -100,10 +95,10 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction
 		}
 	}
 
-	outputs = append(outputs, *NewTXOutPut(amount, to))
+	outputs = append(outputs, *NewTXOutput(amount, to))
 
 	if acc > amount {
-		outputs = append(outputs, *NewTXOutPut(acc-amount, from))
+		outputs = append(outputs, *NewTXOutput(acc-amount, from))
 	}
 
 	tx := Transaction{nil, inputs, outputs}
@@ -113,7 +108,6 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction
 	return &tx
 }
 
-//IsCoinbase checks if  transaction is for coinbase(mining)
 func (tx *Transaction) IsCoinbase() bool {
 	return len(tx.Inputs) == 1 && len(tx.Inputs[0].ID) == 0 && tx.Inputs[0].Out == -1
 }

@@ -6,10 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger"
 	"log"
 	"os"
 	"runtime"
+
+	"github.com/dgraph-io/badger"
 )
 
 const (
@@ -23,24 +24,21 @@ type BlockChain struct {
 	Database *badger.DB
 }
 
-// BlockChainIterator is for doing stuff  in blockchain data
 type BlockChainIterator struct {
 	CurrentHash []byte
 	Database    *badger.DB
 }
 
-//DBExists checks if there is a blockchain ? or we should create genesis
-func DBExists() bool {
+func DBexists() bool {
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		return false
 	}
+
 	return true
 }
 
-//ContinueBlockChain if Database exists. we retrieve last hash and put it in database instance
 func ContinueBlockChain(address string) *BlockChain {
-	// if there is no blockchain exit !
-	if DBExists() == false {
+	if DBexists() == false {
 		fmt.Println("No existing blockchain found, create one!")
 		runtime.Goexit()
 	}
@@ -68,13 +66,10 @@ func ContinueBlockChain(address string) *BlockChain {
 	return &chain
 }
 
-//InitBlockChain 1-if there is not a blockchain create one with given address
-//2-after thad reward for mining genesis
-//3- change last hash value to genesis block last hash ( genesis block is the recent block that mined here)
 func InitBlockChain(address string) *BlockChain {
 	var lastHash []byte
 
-	if DBExists() {
+	if DBexists() {
 		fmt.Println("Blockchain already exists")
 		runtime.Goexit()
 	}
@@ -88,7 +83,7 @@ func InitBlockChain(address string) *BlockChain {
 
 	err = db.Update(func(txn *badger.Txn) error {
 		cbtx := CoinbaseTx(address, genesisData)
-		genesis := CreateGenesisBlock(cbtx)
+		genesis := Genesis(cbtx)
 		fmt.Println("Genesis created")
 		err = txn.Set(genesis.Hash, genesis.Serialize())
 		Handle(err)
@@ -106,10 +101,7 @@ func InitBlockChain(address string) *BlockChain {
 	return &blockchain
 }
 
-// AddBlockToBlockchain adds a block to blockchain with CreateBlock
-//gets last hash from db
-//creates a new block with new data and last hash
-func (chain *BlockChain) AddBlockToBlockchain(transactions []*Transaction) {
+func (chain *BlockChain) AddBlock(transactions []*Transaction) {
 	var lastHash []byte
 
 	for _, tx := range transactions {
@@ -141,36 +133,30 @@ func (chain *BlockChain) AddBlockToBlockchain(transactions []*Transaction) {
 	Handle(err)
 }
 
-//Iterator we need this to explore in blockchain
-// all data are stored in database. so we need to
-//  get database and last hash to fill the BlockChainIterator struct
 func (chain *BlockChain) Iterator() *BlockChainIterator {
-	iter := &BlockChainIterator{
-		CurrentHash: chain.LastHash,
-		Database:    chain.Database,
-	}
+	iter := &BlockChainIterator{chain.LastHash, chain.Database}
+
 	return iter
 }
 
-//Next with BlockChainIterator and getting db and last hash
-//it will get the next blocks one by one
 func (iter *BlockChainIterator) Next() *Block {
 	var block *Block
+
 	err := iter.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(iter.CurrentHash)
 		Handle(err)
 		encodedBlock, err := item.Value()
 		block = Deserialize(encodedBlock)
+
 		return err
 	})
 	Handle(err)
-	// changes current hash to last hash to get the next block and goes on
+
 	iter.CurrentHash = block.PrevHash
+
 	return block
 }
 
-//FindUnspentTransactions finds unspent transactions in blockchain
-//Unspent Transactions are , Transactions that have outputs that are not referenced in other inputs in blockchain
 func (chain *BlockChain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 	var unspentTxs []Transaction
 
@@ -207,7 +193,6 @@ func (chain *BlockChain) FindUnspentTransactions(pubKeyHash []byte) []Transactio
 			}
 		}
 
-		//break if block is genesis
 		if len(block.PrevHash) == 0 {
 			break
 		}
@@ -215,7 +200,6 @@ func (chain *BlockChain) FindUnspentTransactions(pubKeyHash []byte) []Transactio
 	return unspentTxs
 }
 
-//FindUTXO uses FindUnspentTransactions to get unspent transactions and separate them by outputs
 func (chain *BlockChain) FindUTXO(pubKeyHash []byte) []TxOutput {
 	var UTXOs []TxOutput
 	unspentTransactions := chain.FindUnspentTransactions(pubKeyHash)
@@ -230,9 +214,6 @@ func (chain *BlockChain) FindUTXO(pubKeyHash []byte) []TxOutput {
 	return UTXOs
 }
 
-//FindSpendableOutputs checks for balance of user
-//it sums all unspent transactions and gets the balance
-//we will use it wen trying to make new transaction to check balance
 func (chain *BlockChain) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, map[string][]int) {
 	unspentOuts := make(map[string][]int)
 	unspentTxs := chain.FindUnspentTransactions(pubKeyHash)

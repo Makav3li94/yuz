@@ -1,14 +1,13 @@
 package main
 
 import (
-	"github.com/Makav3li94/yuz/cli"
 	"os"
+
+	"github.com/tensor-programming/golang-blockchain/cli"
 )
 
 func main() {
-
 	defer os.Exit(0)
 	cmd := cli.CommandLine{}
 	cmd.Run()
-
 }

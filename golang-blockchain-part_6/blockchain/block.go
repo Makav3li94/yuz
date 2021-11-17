@@ -7,7 +7,6 @@ import (
 	"log"
 )
 
-//Block Transactions are actually block`s data
 type Block struct {
 	Hash         []byte
 	Transactions []*Transaction
@@ -15,20 +14,18 @@ type Block struct {
 	Nonce        int
 }
 
-
-//HashTransactions hashes all transactions(data) as one hash
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte
 	var txHash [32]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		txHashes = append(txHashes, tx.Hash())
 	}
 	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+
 	return txHash[:]
 }
 
-// CreateBlock This function creates a new block using data and CreateHash() function
 func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 	block := &Block{[]byte{}, txs, prevHash, 0}
 	pow := NewProof(block)
@@ -40,10 +37,7 @@ func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 	return block
 }
 
-// CreateGenesisBlock create genesis block
-// the genesis block is the first block of blockchain and doesn't have PrevHash. so we must create it manually
-
-func CreateGenesisBlock(coinbase *Transaction) *Block {
+func Genesis(coinbase *Transaction) *Block {
 	return CreateBlock([]*Transaction{coinbase}, []byte{})
 }
 
@@ -54,19 +48,24 @@ func (b *Block) Serialize() []byte {
 	err := encoder.Encode(b)
 
 	Handle(err)
+
 	return res.Bytes()
 }
 
 func Deserialize(data []byte) *Block {
-	var b Block
+	var block Block
+
 	decoder := gob.NewDecoder(bytes.NewReader(data))
-	err := decoder.Decode(&b)
+
+	err := decoder.Decode(&block)
+
 	Handle(err)
-	return &b
+
+	return &block
 }
 
 func Handle(err error) {
 	if err != nil {
-		log.Panic()
+		log.Panic(err)
 	}
 }
