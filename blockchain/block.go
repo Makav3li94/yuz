@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"encoding/gob"
 	"log"
+	"time"
 )
 
 //Block Transactions are actually block`s data
 type Block struct {
+	Timestamp    int64
 	Hash         []byte
 	Transactions []*Transaction
 	PrevHash     []byte
 	Nonce        int
+	Height       int
 }
 
 
@@ -27,8 +30,8 @@ func (b *Block) HashTransactions() []byte {
 }
 
 // CreateBlock This function creates a new block using data and CreateHash() function
-func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
-	block := &Block{[]byte{}, txs, prevHash, 0}
+func CreateBlock(txs []*Transaction, prevHash []byte,height int) *Block {
+	block := &Block{time.Now().Unix(),[]byte{}, txs, prevHash, 0,height}
 	pow := NewProof(block)
 	nonce, hash := pow.Run()
 
@@ -42,7 +45,7 @@ func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 // the genesis block is the first block of blockchain and doesn't have PrevHash. so we must create it manually
 
 func CreateGenesisBlock(coinbase *Transaction) *Block {
-	return CreateBlock([]*Transaction{coinbase}, []byte{})
+	return CreateBlock([]*Transaction{coinbase}, []byte{},0)
 }
 
 func (b *Block) Serialize() []byte {
@@ -65,6 +68,6 @@ func Deserialize(data []byte) *Block {
 
 func Handle(err error) {
 	if err != nil {
-		log.Panic()
+		log.Panic(err)
 	}
 }
