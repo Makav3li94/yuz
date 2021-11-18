@@ -46,9 +46,10 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
+//CoinbaseTx is the first transaction in every block. it's the reward for the miner
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
-		randData := make([]byte, 20)
+		randData := make([]byte, 24)
 		_, err := rand.Read(randData)
 		Handle(err)
 
@@ -56,7 +57,7 @@ func CoinbaseTx(to, data string) *Transaction {
 	}
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
-	txout := NewTXOutPut(100, to)
+	txout := NewTXOutPut(20, to)
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
 	tx.ID = tx.Hash()
@@ -64,7 +65,6 @@ func CoinbaseTx(to, data string) *Transaction {
 	return &tx
 }
 
-//CoinbaseTx is the first transaction in every block. it's the reward for the miner
 
 
 //NewTransaction Adds transaction to block
