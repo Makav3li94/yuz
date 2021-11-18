@@ -9,17 +9,19 @@ import (
 	"golang.org/x/crypto/ripemd160"
 	"log"
 )
-
+//0x00 is 0
 const (
 	checkSumLength = 4
 	version        = byte(0x00)
 )
 
+//Wallet ; ecdsa is for digital signature
+// a complex algorithm :|
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
 	PublicKey  []byte
 }
-
+//Address is last part of algorithm for creating address (4)
 func (w Wallet) Address() []byte {
 	pubHash := PublicKeyHash(w.PublicKey)
 	versionedHash := append([]byte{version}, pubHash...)
@@ -30,17 +32,12 @@ func (w Wallet) Address() []byte {
 	return address
 }
 
-func ValidateAddress(address string) bool {
-	pubKeyHash := Base58Decode([]byte(address))
-	actualCheckSum := pubKeyHash[len(pubKeyHash)-checkSumLength:]
-	version := pubKeyHash[0]
-	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-checkSumLength]
-	targetChecksum := Checksum(append([]byte{version}, pubKeyHash...))
 
-	return bytes.Compare(actualCheckSum, targetChecksum) == 0
-}
-
+//NewKeyPair ;  creates public key and private key
+//elliptic  uses and x y algorithm to generate key
+//it uses an elliptic cure
 func NewKeyPair() (ecdsa.PrivateKey, []byte) {
+	//elliptic is 256 bytes
 	curve := elliptic.P256()
 
 	private, err := ecdsa.GenerateKey(curve, rand.Reader)
@@ -52,6 +49,7 @@ func NewKeyPair() (ecdsa.PrivateKey, []byte) {
 	return *private, pub
 }
 
+//MakeWallet sets wallet pub and private with MakeWallet
 func MakeWallet() *Wallet {
 	private, public := NewKeyPair()
 	wallet := Wallet{private, public}
@@ -59,6 +57,7 @@ func MakeWallet() *Wallet {
 	return &wallet
 }
 
+//PublicKeyHash is a part of algorithm for creating address (1)
 func PublicKeyHash(pubKey []byte) []byte {
 	pubHash := sha256.Sum256(pubKey)
 
@@ -67,15 +66,30 @@ func PublicKeyHash(pubKey []byte) []byte {
 	if err != nil {
 		log.Panic(err)
 	}
-
+	// sum hashes with ripemd160
+	// it takes a parameter to concatenate, we don`t want to, so we pass nil
 	publicRipMD := hasher.Sum(nil)
 
 	return publicRipMD
 }
 
+//Checksum is a part of algorithm for creating address (2); part 3 is in utils
+//it generate is first four bytes of hash
+// its for verifying transactions
 func Checksum(payload []byte) []byte {
 	firstHash := sha256.Sum256(payload)
 	secondHash := sha256.Sum256(firstHash[:])
 
 	return secondHash[:checkSumLength]
+}
+
+// ValidateAddress reverse generating address algorithm to check checksum
+func ValidateAddress(address string) bool {
+	pubKeyHash := Base58Decode([]byte(address))
+	actualCheckSum := pubKeyHash[len(pubKeyHash)-checkSumLength:]
+	version := pubKeyHash[0]
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-checkSumLength]
+	targetChecksum := Checksum(append([]byte{version}, pubKeyHash...))
+
+	return bytes.Compare(actualCheckSum, targetChecksum) == 0
 }

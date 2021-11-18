@@ -21,7 +21,7 @@ type Transaction struct {
 	Outputs []TxOutput
 }
 
-
+//Hash hashes the serialized transactions data
 func (tx *Transaction) Hash() []byte {
 	var hash [32]byte
 
@@ -32,6 +32,7 @@ func (tx *Transaction) Hash() []byte {
 	return hash[:]
 }
 
+//Serialize converts transactions data to byte
 func (tx Transaction) Serialize() []byte {
 	var encoded bytes.Buffer
 
@@ -45,38 +46,31 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
-
-func (tx *Transaction) SetId() {
-	var encoded bytes.Buffer
-	var hash [32]byte
-	//gob is an encoder like json. but faster and only available in go
-	encode := gob.NewEncoder(&encoded)
-	err := encode.Encode(tx)
-	Handle(err)
-
-	hash = sha256.Sum256(encoded.Bytes())
-	tx.ID = hash[:]
-}
-
-//CoinbaseTx is the first transaction in every block. it's the reward for the miner
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		randData := make([]byte, 20)
+		_, err := rand.Read(randData)
+		Handle(err)
+
+		data = fmt.Sprintf("%x", randData)
 	}
 
-	txin := TxInput{[]byte{}, -1,nil, []byte(data)}
-	txout := NewTXOutPut(100,to)
+	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
+	txout := NewTXOutPut(100, to)
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.SetId()
+	tx.ID = tx.Hash()
 
 	return &tx
 }
 
+//CoinbaseTx is the first transaction in every block. it's the reward for the miner
+
+
 //NewTransaction Adds transaction to block
 // if coins is less than balance, add transaction to input for mining later
 
-func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction {
+func NewTransaction(from, to string, amount int, UTXO *UTXOSet) *Transaction {
 	var inputs []TxInput
 	var outputs []TxOutput
 
@@ -84,7 +78,7 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction
 	Handle(err)
 	w := wallets.GetWallet(from)
 	pubKeyHash := wallet.PublicKeyHash(w.PublicKey)
-	acc, validOutputs := chain.FindSpendableOutputs(pubKeyHash, amount)
+	acc, validOutputs := UTXO.FindSpendableOutputs(pubKeyHash, amount)
 
 	if acc < amount {
 		log.Panic("Error: not enough funds")
@@ -108,21 +102,23 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction
 
 	tx := Transaction{nil, inputs, outputs}
 	tx.ID = tx.Hash()
-	chain.SignTransaction(&tx, w.PrivateKey)
+	UTXO.Blockchain.SignTransaction(&tx, w.PrivateKey)
 
 	return &tx
 }
-
 //IsCoinbase checks if  transaction is for coinbase(mining)
 func (tx *Transaction) IsCoinbase() bool {
 	return len(tx.Inputs) == 1 && len(tx.Inputs[0].ID) == 0 && tx.Inputs[0].Out == -1
 }
 
+//Sign signs transaction, by inputs that references outputs
 func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
+	// no need to sign
 	if tx.IsCoinbase() {
 		return
 	}
 
+	//checks all inputs are valid
 	for _, in := range tx.Inputs {
 		if prevTXs[hex.EncodeToString(in.ID)].ID == nil {
 			log.Panic("ERROR: Previous transaction is not correct")
@@ -131,10 +127,12 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 
 	txCopy := tx.TrimmedCopy()
 
+	//sign every input separately
 	for inId, in := range txCopy.Inputs {
 		prevTX := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
 		txCopy.Inputs[inId].PubKey = prevTX.Outputs[in.Out].PubKeyHash
+		//transaction id is the actual transaction data that is hashed
 		txCopy.ID = txCopy.Hash()
 		txCopy.Inputs[inId].PubKey = nil
 
@@ -147,6 +145,7 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 	}
 }
 
+//Verify check if transactions are valid
 func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	if tx.IsCoinbase() {
 		return true
@@ -161,6 +160,7 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	txCopy := tx.TrimmedCopy()
 	curve := elliptic.P256()
 
+	//checks every signature again- similar to sign
 	for inId, in := range tx.Inputs {
 		prevTx := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
@@ -190,6 +190,7 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	return true
 }
 
+//TrimmedCopy copies th transactions. so we don't change actual data now
 func (tx *Transaction) TrimmedCopy() Transaction {
 	var inputs []TxInput
 	var outputs []TxOutput

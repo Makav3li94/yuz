@@ -16,6 +16,8 @@ type Wallets struct {
 	Wallets map[string]*Wallet
 }
 
+//CreateWallets will add wallets to system for using
+//it doesn't store in blockchain
 func CreateWallets() (*Wallets, error) {
 	wallets := Wallets{}
 	wallets.Wallets = make(map[string]*Wallet)
@@ -23,6 +25,8 @@ func CreateWallets() (*Wallets, error) {
 	return &wallets, err
 }
 
+//AddWallet creates a new wallet
+// and add it to wallets map
 func (ws *Wallets) AddWallet() string {
 	wallet := MakeWallet()
 	address := fmt.Sprintf("%s", wallet.Address())
@@ -32,10 +36,8 @@ func (ws *Wallets) AddWallet() string {
 	return address
 }
 
-func (ws Wallets) GetWallet(address string) Wallet {
-	return *ws.Wallets[address]
-}
 
+//GetAllAddresses separates wallet that we have in wallets map
 func (ws *Wallets) GetAllAddresses() []string {
 	var addresses []string
 
@@ -46,6 +48,14 @@ func (ws *Wallets) GetAllAddresses() []string {
 	return addresses
 }
 
+//GetWallet gets a specific wallet
+func (ws Wallets) GetWallet(address string) Wallet {
+	return *ws.Wallets[address]
+}
+
+
+// LoadFile load wallets in ./tmp/wallets.data
+// and pu it in wallets map
 func (ws *Wallets) LoadFile() error {
 	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
 		return err
@@ -54,20 +64,21 @@ func (ws *Wallets) LoadFile() error {
 	var wallets Wallets
 	fileContent, err := ioutil.ReadFile(walletFile)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 
 	gob.Register(elliptic.P256())
 	decoder := gob.NewDecoder(bytes.NewReader(fileContent))
 	err = decoder.Decode(&wallets)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	ws.Wallets = wallets.Wallets
 
 	return nil
 }
 
+// SaveFile save wallets in ./tmp/wallets.data
 func (ws *Wallets) SaveFile() {
 	var content bytes.Buffer
 
