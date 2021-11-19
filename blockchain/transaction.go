@@ -120,7 +120,7 @@ func (tx *Transaction) IsCoinbase() bool {
 	return len(tx.Inputs) == 1 && len(tx.Inputs[0].ID) == 0 && tx.Inputs[0].Out == -1
 }
 
-//Sign signs transaction, by inputs that references outputs
+//Sign signs transaction, by inputs that references outputs ***
 func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
 	// no need to sign
 	if tx.IsCoinbase() {
@@ -136,7 +136,7 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 
 	txCopy := tx.TrimmedCopy()
 
-	//sign every input separately
+	//sign every input separately with ecdsa sign func
 	for inId, in := range txCopy.Inputs {
 		prevTX := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
@@ -156,7 +156,7 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 	}
 }
 
-//Verify check if transactions are valid
+//Verify check if transactions are valid ***
 func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	if tx.IsCoinbase() {
 		return true
@@ -173,6 +173,7 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 
 	//checks every signature again- similar to sign
 	for inId, in := range tx.Inputs {
+
 		prevTx := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
 		txCopy.Inputs[inId].PubKey = prevTx.Outputs[in.Out].PubKeyHash
@@ -221,7 +222,7 @@ func (tx *Transaction) TrimmedCopy() Transaction {
 
 	return txCopy
 }
-
+//String for printing transactions info in a readable way !
 func (tx Transaction) String() string {
 	var lines []string
 

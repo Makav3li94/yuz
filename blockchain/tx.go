@@ -31,14 +31,15 @@ type TxInput struct {
 }
 
 //UsesKey compares PubKey in output to PubKeyHash in input
-// its for input
+// it`s for input
 func (in *TxInput) UsesKey(pubKeyHash []byte) bool {
 	lockingHash := wallet.PublicKeyHash(in.PubKey)
 
 	return bytes.Compare(lockingHash, pubKeyHash) == 0
 }
 
-//Lock Passing PubKeyHash to out put by decoding address
+//Lock Passing PubKeyHash to output by decoding address
+// that
 func (out *TxOutput) Lock(address []byte) {
 	pubKeyHash := wallet.Base58Decode(address)
 	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
@@ -46,11 +47,12 @@ func (out *TxOutput) Lock(address []byte) {
 }
 
 //IsLockedWithKey checks if PubKeyHash exists
+// a simple validation
 func (out *TxOutput) IsLockedWithKey(pubKeyHash []byte) bool {
 	return bytes.Compare(out.PubKeyHash, pubKeyHash) == 0
 }
 
-//NewTXOutPut generates output and locks it
+//NewTXOutPut generates output with Lock func and locks it ***
 func NewTXOutPut(value int, address string) *TxOutput {
 	txo := &TxOutput{value, nil}
 	txo.Lock([]byte(address))

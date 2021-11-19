@@ -18,9 +18,10 @@ type UTXOSet struct {
 	Blockchain *BlockChain
 }
 
-//FindSpendableOutputs checks for balance of user
-//it sums all unspent transactions and gets the balance
-//we will use it wen trying to make new transaction to check balance
+//FindSpendableOutputs checks for outputs that are un spent
+//and return them as a map
+// it`s similar to FindUnspentTransactions
+// we use it to check  if user can send a new transaction base on its balance
 func (u UTXOSet) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, map[string][]int) {
 	unspentOuts := make(map[string][]int)
 	accumulated := 0
@@ -54,6 +55,9 @@ func (u UTXOSet) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, map[s
 	return accumulated, unspentOuts
 }
 
+//FindUnspentTransactions checks for balance of user
+//it sums all unspent transactions and gets the balance
+//we will use it wen trying to make new transaction to check balance
 func (u UTXOSet) FindUnspentTransactions(pubKeyHash []byte) []TxOutput {
 	var UTXOs []TxOutput
 
@@ -83,7 +87,7 @@ func (u UTXOSet) FindUnspentTransactions(pubKeyHash []byte) []TxOutput {
 
 	return UTXOs
 }
-//CountTransactions count utxos in database
+//CountTransactions counts utxos in database
 func (u UTXOSet) CountTransactions() int {
 	db := u.Blockchain.Database
 	counter := 0
@@ -182,6 +186,7 @@ func (u *UTXOSet) Update(block *Block) {
 }
 
 //DeleteByPrefix deletes utxos key data from database
+// meaning, it will empty the tx pool !
 func (u *UTXOSet) DeleteByPrefix(prefix []byte) {
 
 	//deleting keys
@@ -199,6 +204,7 @@ func (u *UTXOSet) DeleteByPrefix(prefix []byte) {
 		return nil
 	}
 	//find 100000 fields for deleting
+	// its max amount badge can delete in single operation
 	collectSize := 100000
 	u.Blockchain.Database.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
