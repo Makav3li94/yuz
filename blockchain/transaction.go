@@ -21,7 +21,9 @@ type Transaction struct {
 	Outputs []TxOutput
 }
 
-//Hash hashes the serialized transactions data
+//Hash hashes the serialized transaction data
+//we get hashes of each transaction, concatenate them,
+//and get a hash of the concatenated combination
 func (tx *Transaction) Hash() []byte {
 	var hash [32]byte
 
@@ -90,7 +92,9 @@ func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UTXOSet) *Tra
 	if acc < amount {
 		log.Panic("Error: not enough funds")
 	}
-
+	// Build a list of inputs
+	//for each found output with FindSpendableOutputs
+	//an input referencing it is created
 	for txid, outs := range validOutputs {
 		txID, err := hex.DecodeString(txid)
 		Handle(err)
@@ -103,6 +107,9 @@ func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UTXOSet) *Tra
 
 	from := fmt.Sprintf("%s", w.Address())
 
+	// Build a list of outputs
+	// we need to create 2 outputs
+	// one for sender and one for receiver
 	outputs = append(outputs, *NewTXOutPut(amount, to))
 
 	if acc > amount {
@@ -121,6 +128,8 @@ func (tx *Transaction) IsCoinbase() bool {
 }
 
 //Sign signs transaction, by inputs that references outputs ***
+
+
 func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
 	// no need to sign
 	if tx.IsCoinbase() {
@@ -156,7 +165,10 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 	}
 }
 
-//Verify check if transactions are valid ***
+//Verify check if transactions are valid ***'
+//Checking that inputs have permission to use outputs from previous transactions.
+//Checking that the transaction signature is correct.
+
 func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	if tx.IsCoinbase() {
 		return true

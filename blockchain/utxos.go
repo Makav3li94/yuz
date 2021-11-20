@@ -58,6 +58,7 @@ func (u UTXOSet) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, map[s
 //FindUnspentTransactions checks for balance of user
 //it sums all unspent transactions and gets the balance
 //we will use it wen trying to make new transaction to check balance
+//Unspent Transactions means, outputs that weren’t referenced in any inputs
 func (u UTXOSet) FindUnspentTransactions(pubKeyHash []byte) []TxOutput {
 	var UTXOs []TxOutput
 

@@ -11,6 +11,7 @@ import (
 	"net"
 )
 
+// HandleAddr updates active nodes addresses
 func HandleAddr(request []byte) {
 	var buff bytes.Buffer
 	var payload Addr
@@ -28,6 +29,7 @@ func HandleAddr(request []byte) {
 	RequestBlocks()
 }
 
+//HandleBlock get the blocks and store it in our blockchain node
 func HandleBlock(request []byte, chain *blockchain.BlockChain) {
 	var buff bytes.Buffer
 	var payload Block
@@ -57,7 +59,7 @@ func HandleBlock(request []byte, chain *blockchain.BlockChain) {
 		UTXOSet.Reindex()
 	}
 }
-
+//HandleInv show other nodes what blocks or transactions current node has
 func HandleInv(request []byte, chain *blockchain.BlockChain) {
 	var buff bytes.Buffer
 	var payload Inv
@@ -94,7 +96,7 @@ func HandleInv(request []byte, chain *blockchain.BlockChain) {
 		}
 	}
 }
-
+//HandleGetBlocks show me what blocks you have; just blocks hashes no all
 func HandleGetBlocks(request []byte, chain *blockchain.BlockChain) {
 	var buff bytes.Buffer
 	var payload GetBlocks
@@ -109,7 +111,8 @@ func HandleGetBlocks(request []byte, chain *blockchain.BlockChain) {
 	blocks := chain.GetBlockHashes()
 	SendInv(payload.AddrFrom, "block", blocks)
 }
-
+//HandleGetData is a request for certain block or transaction,
+//and it can contain only one block/transaction ID
 func HandleGetData(request []byte, chain *blockchain.BlockChain) {
 	var buff bytes.Buffer
 	var payload GetData
@@ -138,6 +141,7 @@ func HandleGetData(request []byte, chain *blockchain.BlockChain) {
 	}
 }
 
+//HandleTx put new transaction in the mempool
 func HandleTx(request []byte, chain *blockchain.BlockChain) {
 	var buff bytes.Buffer
 	var payload Tx
@@ -167,7 +171,8 @@ func HandleTx(request []byte, chain *blockchain.BlockChain) {
 		}
 	}
 }
-
+//MineTx mine transactions
+//we mine a transaction immediately after sending one
 func MineTx(chain *blockchain.BlockChain) {
 	var txs []*blockchain.Transaction
 
@@ -208,7 +213,7 @@ func MineTx(chain *blockchain.BlockChain) {
 		MineTx(chain)
 	}
 }
-
+//HandleVersion check the foreigner node blocks height with central node
 func HandleVersion(request []byte, chain *blockchain.BlockChain) {
 	var buff bytes.Buffer
 	var payload Version
@@ -233,7 +238,7 @@ func HandleVersion(request []byte, chain *blockchain.BlockChain) {
 		KnownNodes = append(KnownNodes, payload.AddrFrom)
 	}
 }
-
+//HandleConnection processes command body to know what the fuck we should do
 func HandleConnection(conn net.Conn, chain *blockchain.BlockChain) {
 	req, err := ioutil.ReadAll(conn)
 	defer conn.Close()

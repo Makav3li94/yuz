@@ -6,6 +6,8 @@ import (
 	"github.com/Makav3li94/yuz/wallet"
 )
 
+// inputs produce outputs and outputs make inputs possible
+
 //TxOutput Value is amount
 //PubKeyHash is for locking it for an address
 type TxOutput struct {
@@ -19,9 +21,8 @@ type TxOutPuts struct {
 	OutPuts []TxOutput
 }
 
-//TxInput refrence to out puts.
-// is for transaction hash
-//out is index of specific output
+//TxInput reference to previous outputs.
+//out stores an index of an output in the transaction
 // Tx input give permissions to create transactions with Signature and PubKey
 type TxInput struct {
 	ID        []byte

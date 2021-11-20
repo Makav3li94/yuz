@@ -21,6 +21,16 @@ type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
 	PublicKey  []byte
 }
+
+
+//1-Take the public key and hash it twice with RIPEMD160(SHA256(PubKey)) hashing algorithms.
+//2-Prepend the version of the address generation algorithm to the hash.
+//3-Calculate the checksum by hashing the result of step 2 with SHA256(SHA256(payload)). The checksum is the first four bytes of the resulted hash.
+//4-Append the checksum to the version+PubKeyHash combination.
+//5-Encode the version+PubKeyHash+checksum combination with Base58.
+
+
+
 //Address is last part of algorithm for creating address (4)
 func (w Wallet) Address() []byte {
 	pubHash := PublicKeyHash(w.PublicKey)

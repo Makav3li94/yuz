@@ -9,10 +9,12 @@ import (
 	"net"
 )
 
+// for communication between nodes
+// all messages are converted to bytes
 const (
 	protocol      = "tcp"
 	version       = 1
-	commandLength  = 12
+	commandLength = 12
 )
 
 var (
@@ -57,7 +59,6 @@ type Version struct {
 	BestHeight int
 	AddrFrom   string
 }
-
 
 func RequestBlocks() {
 	for _, node := range KnownNodes {
@@ -138,6 +139,7 @@ func SendTx(addr string, tnx *blockchain.Transaction) {
 	SendData(addr, request)
 }
 
+//SendVersion check if blockchain is oudated or not
 func SendVersion(addr string, chain *blockchain.BlockChain) {
 	bestHeight := chain.GetBestHeight()
 	payload := GobEncode(Version{version, bestHeight, nodeAddress})
@@ -147,7 +149,8 @@ func SendVersion(addr string, chain *blockchain.BlockChain) {
 	SendData(addr, request)
 }
 
-
+//StartServer is for setting up a server to get messages
+//then get data like blocks and ... form central node
 func StartServer(nodeID, minerAddress string) {
 	nodeAddress = fmt.Sprintf("localhost:%s", nodeID)
 	mineAddress = minerAddress
@@ -162,6 +165,8 @@ func StartServer(nodeID, minerAddress string) {
 	go CloseDB(chain)
 
 	if nodeAddress != KnownNodes[0] {
+		//send version message to the central node
+		//to find out if its blockchain is outdated
 		SendVersion(KnownNodes[0], chain)
 	}
 	for {
@@ -174,3 +179,12 @@ func StartServer(nodeID, minerAddress string) {
 	}
 }
 
+func NodeIsKnown(addr string) bool {
+	for _, node := range KnownNodes {
+		if node == addr {
+			return true
+		}
+	}
+
+	return false
+}

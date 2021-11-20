@@ -12,6 +12,7 @@ import (
 	"syscall"
 )
 
+//CmdToBytes used for sending message to other nodes
 func CmdToBytes(cmd string) []byte {
 	var bytes [commandLength]byte
 
@@ -21,7 +22,7 @@ func CmdToBytes(cmd string) []byte {
 
 	return bytes[:]
 }
-
+//BytesToCmd used for receiving message to other nodes
 func BytesToCmd(bytes []byte) string {
 	var cmd []byte
 
@@ -61,12 +62,3 @@ func GobEncode(data interface{}) []byte {
 	return buff.Bytes()
 }
 
-func NodeIsKnown(addr string) bool {
-	for _, node := range KnownNodes {
-		if node == addr {
-			return true
-		}
-	}
-
-	return false
-}
